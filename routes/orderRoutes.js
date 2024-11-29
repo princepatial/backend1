@@ -8,10 +8,10 @@ router.post('/checkout', checkout);
 router.get('/', getAllOrders);
 
 
-router.put('/:id', ordercontroller.updateOrder);
+router.put('/:id', updateOrder);
 
 
-router.delete('/:id', ordercontroller.deleteOrder);
+router.delete('/:id', deleteOrder);
 
 
 module.exports = router;
