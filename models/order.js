@@ -11,6 +11,8 @@ const orderSchema = new mongoose.Schema({
   ],
   tableNumber: { type: String, required: true },
   mobileNumber: { type: String, required: true },
+  name: { type: String, required: true }, 
+  address: { type: String },
   createdAt: { type: Date, default: Date.now },
 });
 
