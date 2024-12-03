@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 function generateShortOrderId() {
   const timestamp = Date.now().toString().slice(-4); 
   const randomPart = Math.random().toString(36).substring(2, 6).toUpperCase(); 
-  return `ORD${timestamp}${randomPart}`; /
+  return `ORD${timestamp}${randomPart}`; 
 }
 
 const orderSchema = new mongoose.Schema({
