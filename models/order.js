@@ -1,51 +1,33 @@
 const mongoose = require('mongoose');
 
-// Create a separate schema to track daily order counter
-const counterSchema = new mongoose.Schema({
-  _id: { type: String, required: true },
-  sequence_value: { type: Number, default: 1001 },
-  last_reset_date: { type: String, required: true }
+// Define a schema for tracking daily order numbers
+const orderCounterSchema = new mongoose.Schema({
+  date: { type: String, unique: true }, // Stores the date in 'YYYY-MM-DD' format
+  count: { type: Number, default: 1001 }, // Initial count starts from 1001
 });
 
-const Counter = mongoose.model('Counter', counterSchema, 'counters');
+const OrderCounter = mongoose.model('OrderCounter', orderCounterSchema, 'orderCounter');
 
 // Function to generate the daily order ID
 async function generateDailyOrderId() {
   const today = new Date();
-  const dateKey = today.toISOString().split('T')[0];
-  const dayOfMonth = today.getDate();
+  const dateKey = today.toISOString().split('T')[0]; // Get the current date in 'YYYY-MM-DD'
+  const dayOfMonth = today.getDate(); // Get the day of the month (e.g., 4 for December 4th)
 
-  try {
-    // Find or create the counter for today
-    let counter = await Counter.findOneAndUpdate(
-      { _id: dateKey },
-      { 
-        $setOnInsert: { last_reset_date: dateKey },
-        $inc: { sequence_value: 1 }
-      },
-      { 
-        upsert: true, 
-        new: true, 
-        setDefaultsOnInsert: true 
-      }
-    );
+  // Find the counter for today's date or create one
+  const counter = await OrderCounter.findOneAndUpdate(
+    { date: dateKey },
+    { $inc: { count: 1 } },
+    { new: true, upsert: true } // Create a new document if not found
+  );
 
-    // Generate the order ID
-    const orderId = `ORD${dayOfMonth}-${counter.sequence_value}`;
-    return orderId;
-  } catch (error) {
-    console.error('Error generating order ID:', error);
-    throw new Error('Failed to generate order ID');
-  }
+  // Return the order ID with the 'ORD' prefix, day of month, and counter
+  return `ORD${dayOfMonth}-${counter.count}`;
 }
 
 // Define the Order schema
 const orderSchema = new mongoose.Schema({
-  orderId: { 
-    type: String, 
-    unique: true,
-    required: true
-  },
+  orderId: { type: String, unique: true }, // Short Order ID
   items: [
     {
       id: { type: String, required: true },
@@ -64,15 +46,9 @@ const orderSchema = new mongoose.Schema({
 // Middleware to generate the daily order ID before saving
 orderSchema.pre('save', async function (next) {
   if (!this.orderId) {
-    try {
-      this.orderId = await generateDailyOrderId();
-      next();
-    } catch (error) {
-      next(error);
-    }
-  } else {
-    next();
+    this.orderId = await generateDailyOrderId();
   }
+  next();
 });
 
 module.exports = mongoose.model('Order', orderSchema, 'order');
