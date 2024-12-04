@@ -1,33 +1,31 @@
 const mongoose = require('mongoose');
 
-// Define a schema for tracking daily order numbers
+// Define a schema for tracking order numbers
 const orderCounterSchema = new mongoose.Schema({
-  date: { type: String, unique: true }, // Stores the date in 'YYYY-MM-DD' format
-  count: { type: Number, default: 1001 }, // Initial count starts from 1001
+  lastOrderNumber: { type: Number, default: 1000 } 
 });
 
 const OrderCounter = mongoose.model('OrderCounter', orderCounterSchema, 'orderCounter');
 
-// Function to generate the daily order ID
-async function generateDailyOrderId() {
+// Function to generate the order ID
+async function generateOrderId() {
   const today = new Date();
-  const dateKey = today.toISOString().split('T')[0]; // Get the current date in 'YYYY-MM-DD'
-  const dayOfMonth = today.getDate(); // Get the day of the month (e.g., 4 for December 4th)
+  const dayOfMonth = today.getDate(); 
 
-  // Find the counter for today's date or create one
+  // Find and update the counter, incrementing the last order number
   const counter = await OrderCounter.findOneAndUpdate(
-    { date: dateKey },
-    { $inc: { count: 1 } },
-    { new: true, upsert: true } // Create a new document if not found
+    {}, // Find the single counter document
+    { $inc: { lastOrderNumber: 1 } },
+    { new: true, upsert: true } 
   );
 
-  // Return the order ID with the 'ORD' prefix, day of month, and counter
-  return `ORD${dayOfMonth}-${counter.count}`;
+ 
+  return `ORD${dayOfMonth}-${counter.lastOrderNumber}`;
 }
 
 // Define the Order schema
 const orderSchema = new mongoose.Schema({
-  orderId: { type: String, unique: true }, // Short Order ID
+  orderId: { type: String, unique: true }, 
   items: [
     {
       id: { type: String, required: true },
@@ -43,10 +41,10 @@ const orderSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
-// Middleware to generate the daily order ID before saving
+// Middleware to generate the order ID before saving
 orderSchema.pre('save', async function (next) {
   if (!this.orderId) {
-    this.orderId = await generateDailyOrderId();
+    this.orderId = await generateOrderId();
   }
   next();
 });
