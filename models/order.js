@@ -1,85 +1,60 @@
 const mongoose = require('mongoose');
 
-// Define a schema for tracking order numbers
-const orderCounterSchema = new mongoose.Schema({
-  lastOrderNumber: { type: Number, default: 1001 },
-  lastDate: { type: Date, default: null }
-}, { timestamps: true });
+// Create a separate schema for tracking order sequences globally
+const orderSequenceSchema = new mongoose.Schema({
+  _id: { type: String, default: 'global_sequence' },
+  lastSequence: { type: Number, default: 1000 }
+});
 
-const OrderCounter = mongoose.model('OrderCounter', orderCounterSchema, 'orderCounter');
+// Create a model for order sequence
+const OrderSequence = mongoose.model('OrderSequence', orderSequenceSchema, 'order_sequences');
 
-// Function to generate the order ID
+// Function to generate a unique, continuously incrementing order ID
 async function generateOrderId() {
+  // Get today's date in the format ORD{month}{day}
   const today = new Date();
-  const dayOfMonth = today.getDate();
+  const datePrefix = `ORD${today.getMonth() + 1}${today.getDate()}`;
 
-  // First, try to find the last order
-  let lastOrder = await Order.findOne({}).sort({ createdAt: -1 }).limit(1);
+  // Find or create the global sequence document
+  let sequenceDoc = await OrderSequence.findById('global_sequence');
   
-  let counter = await OrderCounter.findOne({});
-
-  // If no counter exists, create one
-  if (!counter) {
-    counter = new OrderCounter({
-      lastOrderNumber: 1000,
-      lastDate: today
+  if (!sequenceDoc) {
+    // If no sequence exists, create a new one starting from 1000
+    sequenceDoc = new OrderSequence({ 
+      _id: 'global_sequence', 
+      lastSequence: 1000 
     });
-    await counter.save();
   }
 
-  // Determine the next order number
-  let nextOrderNumber;
-  if (lastOrder && lastOrder.orderId) {
-    // Extract the number from the last order ID
-    const lastOrderNumberMatch = lastOrder.orderId.match(/\d+$/);
-    if (lastOrderNumberMatch) {
-      nextOrderNumber = parseInt(lastOrderNumberMatch[0]) + 1;
-    } else {
-      nextOrderNumber = counter.lastOrderNumber + 1;
-    }
-  } else {
-    nextOrderNumber = counter.lastOrderNumber + 1;
-  }
+  // Increment the sequence and save
+  const newSequence = sequenceDoc.lastSequence + 1;
+  const orderId = `${datePrefix}-${newSequence}`;
+  
+  sequenceDoc.lastSequence = newSequence;
+  await sequenceDoc.save();
 
-  // Update the counter with the new order number and date
-  counter = await OrderCounter.findOneAndUpdate(
-    {}, 
-    { 
-      lastOrderNumber: nextOrderNumber,
-      lastDate: today 
-    },
-    { new: true }
-  );
-
-  // Generate order ID with current day and next order number
-  return `ORD${dayOfMonth}-${nextOrderNumber}`;
+  return orderId;
 }
 
-// Define the Order schema
 const orderSchema = new mongoose.Schema({
-  orderId: { type: String, unique: true }, 
+  orderId: { 
+    type: String, 
+    default: generateOrderId, 
+    unique: true 
+  },
   items: [
     {
       id: { type: String, required: true },
       name: { type: String, required: true },
       price: { type: Number, required: true },
       quantity: { type: Number, required: true },
-    },
+    }
   ],
   tableNumber: { type: String, required: true },
   mobileNumber: { type: String, required: true },
   userName: { type: String, required: true },
   userAddress: { type: String },
-  createdAt: { type: Date, default: Date.now },
+  createdAt: { type: Date, default: Date.now }
 });
 
-// Middleware to generate the order ID before saving
-orderSchema.pre('save', async function (next) {
-  if (!this.orderId) {
-    this.orderId = await generateOrderId();
-  }
-  next();
-});
-
-const Order = mongoose.model('Order', orderSchema, 'order');
-module.exports = Order;
+module.exports = mongoose.model('Order', orderSchema, 'order');
