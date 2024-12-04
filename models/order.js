@@ -16,7 +16,7 @@ async function generateDailyOrderId() {
   // Find the counter for today's date or create one
   const counter = await OrderCounter.findOneAndUpdate(
     { date: dateKey },
-    { $inc: { count: 1 } },
+    { $inc: { count: 1001 } },
     { new: true, upsert: true } 
   );
 
