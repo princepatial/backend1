@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 // Define a schema for tracking order numbers
 const orderCounterSchema = new mongoose.Schema({
-  lastOrderNumber: { type: Number, default: 1000 },
+  lastOrderNumber: { type: Number, default: 1001 },
   lastDate: { type: Date, default: null }
 }, { timestamps: true });
 
