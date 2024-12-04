@@ -9,37 +9,32 @@ const orderSequenceSchema = new mongoose.Schema({
 // Create a model for order sequence
 const OrderSequence = mongoose.model('OrderSequence', orderSequenceSchema, 'order_sequences');
 
-// Function to generate a unique, continuously incrementing order ID
-async function generateOrderId() {
+// Separate function to get the next order ID
+async function getNextOrderId() {
   // Get today's date in the format ORD{month}{day}
   const today = new Date();
   const datePrefix = `ORD${today.getMonth() + 1}${today.getDate()}`;
 
   // Find or create the global sequence document
-  let sequenceDoc = await OrderSequence.findById('global_sequence');
-  
-  if (!sequenceDoc) {
-    // If no sequence exists, create a new one starting from 1000
-    sequenceDoc = new OrderSequence({ 
-      _id: 'global_sequence', 
-      lastSequence: 1000 
-    });
-  }
+  let sequenceDoc = await OrderSequence.findOneAndUpdate(
+    { _id: 'global_sequence' },
+    { $inc: { lastSequence: 1 } },
+    { 
+      new: true,  // Return the updated document
+      upsert: true,  // Create the document if it doesn't exist
+      setDefaultsOnInsert: true 
+    }
+  );
 
-  // Increment the sequence and save
-  const newSequence = sequenceDoc.lastSequence + 1;
-  const orderId = `${datePrefix}-${newSequence}`;
-  
-  sequenceDoc.lastSequence = newSequence;
-  await sequenceDoc.save();
-
-  return orderId;
+  // Generate the order ID
+  const newSequence = sequenceDoc.lastSequence;
+  return `${datePrefix}-${newSequence}`;
 }
 
 const orderSchema = new mongoose.Schema({
   orderId: { 
     type: String, 
-    default: generateOrderId, 
+    required: true,  // Make it required
     unique: true 
   },
   items: [
@@ -55,6 +50,20 @@ const orderSchema = new mongoose.Schema({
   userName: { type: String, required: true },
   userAddress: { type: String },
   createdAt: { type: Date, default: Date.now }
+});
+
+// Middleware to generate orderId before saving
+orderSchema.pre('save', async function(next) {
+  if (!this.orderId) {
+    try {
+      this.orderId = await getNextOrderId();
+      next();
+    } catch (error) {
+      next(error);
+    }
+  } else {
+    next();
+  }
 });
 
 module.exports = mongoose.model('Order', orderSchema, 'order');
