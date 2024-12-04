@@ -1,32 +1,30 @@
 const mongoose = require('mongoose');
 
-const orderCounterSchema = new mongoose.Schema({
-  date: { type: String, unique: true }, 
-  count: { type: Number, default: 1001 }, 
-});
-
-const OrderCounter = mongoose.model('OrderCounter', orderCounterSchema, 'orderCounter');
+// Global variable to store the in-memory counter
+let dailyOrderCounter = 1001;
+let lastResetDate = new Date().toISOString().split('T')[0]; 
 
 // Function to generate the daily order ID
-async function generateDailyOrderId() {
+function generateDailyOrderId() {
   const today = new Date();
-  const dateKey = today.toISOString().split('T')[0]; // Get the current date in 'YYYY-MM-DD'
-  const dayOfMonth = today.getDate(); // Get the day of the month (e.g., 4 for December 4th)
+  const dateKey = today.toISOString().split('T')[0]; 
+  const dayOfMonth = today.getDate();
 
-  // Find the counter for today's date or create one
-  const counter = await OrderCounter.findOneAndUpdate(
-    { date: dateKey },
-    { $inc: { count: 1001 } },
-    { new: true, upsert: true } 
-  );
+  // Reset the counter if the date has changed
+  if (dateKey !== lastResetDate) {
+    dailyOrderCounter = 1001; 
+    lastResetDate = dateKey;  
+  }
 
-  // Return the order ID with the 'ORD' prefix, day of month, and counter
-  return `ORD${dayOfMonth}-${counter.count}`;
+  // Generate the order ID
+  const orderId = `ORD${dayOfMonth}-${dailyOrderCounter}`;
+  dailyOrderCounter++; 
+  return orderId;
 }
 
 // Define the Order schema
 const orderSchema = new mongoose.Schema({
-  orderId: { type: String, unique: true }, // Short Order ID
+  orderId: { type: String, unique: true },
   items: [
     {
       id: { type: String, required: true },
@@ -43,9 +41,9 @@ const orderSchema = new mongoose.Schema({
 });
 
 // Middleware to generate the daily order ID before saving
-orderSchema.pre('save', async function (next) {
+orderSchema.pre('save', function (next) {
   if (!this.orderId) {
-    this.orderId = await generateDailyOrderId();
+    this.orderId = generateDailyOrderId();
   }
   next();
 });
