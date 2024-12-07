@@ -2,13 +2,13 @@ const Order = require('../models/order');
 
 // Handle checkout
 exports.checkout = async (req, res) => {
-  const { items, tableNumber, mobileNumber, userName, userAddress } = req.body;
+  const { items, selectedTable, mobileNumber, userName, userAddress } = req.body;
 
   // Validate input
   if (!items || items.length === 0) {
     return res.status(400).json({ success: false, message: 'Cart is empty' });
   }
-  if (!tableNumber || !mobileNumber || !userName) {
+  if (!selectedTable || !mobileNumber || !userName) {
     return res.status(400).json({ success: false, message: 'Required fields are missing' });
   }
 
@@ -16,7 +16,7 @@ exports.checkout = async (req, res) => {
     // Save the order
     const order = await Order.create({
       items,
-      tableNumber,
+      selectedTable,
       mobileNumber,
       userName,
       userAddress,
@@ -51,12 +51,12 @@ exports.getAllOrders = async (req, res) => {
 // PUT: Update an order by ID
 exports.updateOrder = async (req, res) => {
   const { id } = req.params;
-  const { items, tableNumber, mobileNumber, userName, userAddress } = req.body;
+  const { items, selectedTable, mobileNumber, userName, userAddress } = req.body;
 
   try {
     const updatedOrder = await Order.findByIdAndUpdate(
       id,
-      { items, tableNumber, mobileNumber, userName, userAddress },
+      { items, selectedTable, mobileNumber, userName, userAddress },
       { new: true, runValidators: true } 
     );
 

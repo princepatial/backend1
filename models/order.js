@@ -1,14 +1,8 @@
 const mongoose = require('mongoose');
 
-// Function to generate a short order ID
-function generateShortOrderId() {
-  const timestamp = Date.now().toString().slice(-4); 
-  const randomPart = Math.random().toString(36).substring(2, 6).toUpperCase(); 
-  return ORD${timestamp}${randomPart}; 
-}
 
 const orderSchema = new mongoose.Schema({
-  orderId: { type: String, default: generateShortOrderId, unique: true }, // Short Order ID
+  orderId: { type: String, unique: true }, 
   items: [
     {
       id: { type: String, required: true },
@@ -17,11 +11,44 @@ const orderSchema = new mongoose.Schema({
       quantity: { type: Number, required: true },
     },
   ],
-  tableNumber: { type: String, required: true },
+  selectedTable: { type: String, required: true },
   mobileNumber: { type: String, required: true },
   userName: { type: String, required: true },
   userAddress: { type: String },
   createdAt: { type: Date, default: Date.now },
+});
+
+
+const counterSchema = new mongoose.Schema({
+  date: { type: String, unique: true }, 
+  sequence: { type: Number, default: 1001 },
+});
+
+
+const Counter = mongoose.model('Counter', counterSchema, 'counters');
+
+
+async function generateOrderId() {
+  const todayDate = new Date().getDate().toString(); 
+
+
+  const counter = await Counter.findOneAndUpdate(
+    { date: todayDate },
+    { $inc: { sequence: 1 } }, 
+    { new: true, upsert: true } 
+  );
+
+  
+  const orderId = `ORD${todayDate}-${counter.sequence}`;
+  return orderId;
+}
+
+
+orderSchema.pre('save', async function (next) {
+  if (!this.orderId) {
+    this.orderId = await generateOrderId();
+  }
+  next();
 });
 
 module.exports = mongoose.model('Order', orderSchema, 'order');
