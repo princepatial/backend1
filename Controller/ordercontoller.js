@@ -93,6 +93,25 @@ exports.updateOrderStatus = async (req, res) => {
 
 
 
+exports.getOrderStatus = async (req, res) => {
+  try {
+    const order = await Order.findOne({ orderId: req.params.orderId });
+    
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+    
+    res.json({ orderStatus: order.orderStatus });
+  } catch (error) {
+    res.status(500).json({ 
+      message: 'Error fetching order status', 
+      error: error.message 
+    });
+  }
+};
+
+
+
 
 
 // Existing update method now includes orderStatus
