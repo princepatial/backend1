@@ -101,14 +101,24 @@ exports.getOrderStatus = async (req, res) => {
       return res.status(404).json({ message: 'Order not found' });
     }
     
-    res.json({ orderStatus: order.orderStatus });
+    res.json({
+      orderId: order.orderId,
+      orderStatus: order.orderStatus,
+      selectedTable: order.selectedTable,
+      userName: order.userName,
+      mobileNumber: order.mobileNumber,
+      items: order.items,
+      createdAt: order.createdAt,
+      userAddress: order.userAddress
+    });
   } catch (error) {
     res.status(500).json({ 
-      message: 'Error fetching order status', 
+      message: 'Error fetching order details', 
       error: error.message 
     });
   }
 };
+
 
 
 
